@@ -1,9 +1,19 @@
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   evaluate, figureFromParts, JOINTS, NEUTRAL, parseParts, PRESETS, SAMPLE_PARTS,
-  type AnimOptions, type Keyframe, type Pose,
+  type AnimOptions, type Keyframe, type Pose, type TexKind, type TexStatus,
 } from "@/lib/minifig";
+
+const TEX_LABEL: Record<TexStatus, string> = {
+  none: "no part in list",
+  noprint: "plain part, no print",
+  loading: "loading…",
+  ok: "loaded ✓",
+  cors: "found, but BrickLink blocks browser use — upload a saved photo",
+  missing: "no image found for this ID/color",
+  error: "couldn't read that image",
+};
 
 const MinifigScene = lazy(() => import("@/components/MinifigScene"));
 
@@ -43,6 +53,19 @@ function Studio() {
   const [opt, setOpt] = useState<AnimOptions>({ stepped: true, fps: 12, overshoot: 1.2, hop: 0.15 });
   const [recording, setRecording] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // print textures: load status per part + optional user-supplied part photos
+  const [texStatus, setTexStatus] = useState<Record<TexKind, TexStatus>>({ torso: "loading", head: "loading" });
+  const [uploads, setUploads] = useState<Record<TexKind, string | null>>({ torso: null, head: null });
+  const onTexture = useCallback((kind: TexKind, status: TexStatus) => {
+    setTexStatus((s) => (s[kind] === status ? s : { ...s, [kind]: status }));
+  }, []);
+  const setUpload = (kind: TexKind, file: File | null) => {
+    const old = uploads[kind];
+    if (old) URL.revokeObjectURL(old);
+    const url = file ? URL.createObjectURL(file) : null;
+    setUploads((u) => ({ ...u, [kind]: url }));
+  };
 
   const sorted = useMemo(() => [...keys].sort((a, b) => a.t - b.t), [keys]);
   const endT = sorted[sorted.length - 1]?.t ?? 0;
@@ -173,6 +196,27 @@ function Studio() {
             </ul>
           </section>
           <section>
+            <h2 className="panel-title">Print textures</h2>
+            {(["torso", "head"] as const).map((kind) => (
+              <div key={kind} className="mb-2 text-xs">
+                <div className="flex justify-between gap-2">
+                  <span className="capitalize">{kind}</span>
+                  <span className="text-right text-muted-foreground">{uploads[kind] && texStatus[kind] === "ok" ? "your photo ✓" : TEX_LABEL[texStatus[kind]]}</span>
+                </div>
+                <div className="mt-1 flex gap-1">
+                  <label className="btn-ghost cursor-pointer">
+                    {uploads[kind] ? "Replace photo" : "Use my own photo"}
+                    <input
+                      type="file" accept="image/*" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) setUpload(kind, f); e.target.value = ""; }}
+                    />
+                  </label>
+                  {uploads[kind] && <button className="btn-ghost" onClick={() => setUpload(kind, null)}>Remove</button>}
+                </div>
+              </div>
+            ))}
+          </section>
+          <section>
             <h2 className="panel-title">Jump to pose</h2>
             <div className="grid grid-cols-3 gap-2">
               {PRESETS.map((pr) => (
@@ -193,7 +237,7 @@ function Studio() {
         <main className="relative min-w-0 flex-1">
           <ClientOnly fallback={<div className="grid h-full place-items-center text-muted-foreground">Loading 3D…</div>}>
             <Suspense fallback={null}>
-              <MinifigScene pose={pose} colors={colors} ground="#f3efe6" onCanvas={(c) => (canvasRef.current = c)} />
+              <MinifigScene pose={pose} colors={colors} ground="#f3efe6" uploads={uploads} onTexture={onTexture} onCanvas={(c) => (canvasRef.current = c)} />
             </Suspense>
           </ClientOnly>
           <div className="absolute left-4 top-4 rounded-full bg-card/90 px-3 py-1 text-xs text-muted-foreground shadow-sm">

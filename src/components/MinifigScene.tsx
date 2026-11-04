@@ -1,25 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
-import { partImageUrls, type FigColors, type Pose } from "@/lib/minifig";
+import { partImageUrls, type FigColors, type Pose, type TexKind, type TexStatus } from "@/lib/minifig";
 
 const d = (deg: number) => (deg * Math.PI) / 180;
 
+export type TexReport = (kind: TexKind, status: TexStatus, detail?: string) => void;
+
 // ---------- BrickLink picture -> texture ----------
 
-function loadImage(urls: string[]): Promise<HTMLImageElement | null> {
+function probe(url: string, cors: boolean): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
-    const tryAt = (i: number) => {
-      if (i >= urls.length) return resolve(null);
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => tryAt(i + 1);
-      img.src = urls[i]!;
-    };
-    tryAt(0);
+    const img = new Image();
+    if (cors) img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
   });
+}
+
+// Tries each URL with CORS (needed to draw it into a canvas / WebGL texture). If none works,
+// retries without CORS to tell "image exists but the host blocks browser use" from "no such image".
+async function loadImage(urls: string[]): Promise<{ img: HTMLImageElement | null; status: "ok" | "cors" | "missing"; url?: string }> {
+  let blocked: string | undefined;
+  for (const url of urls) {
+    const img = await probe(url, true);
+    if (img) return { img, status: "ok", url };
+    if (!blocked && (await probe(url, false))) blocked = url;
+  }
+  return { img: null, status: blocked ? "cors" : "missing", url: blocked };
 }
 
 // Crop the printed front of a torso photo (BrickLink shows torsos straight-on with arms).
@@ -62,17 +72,41 @@ function finish(c: HTMLCanvasElement) {
   return t;
 }
 
-function usePartTexture(part: FigColors["torsoPart"], kind: "torso" | "head") {
+// `upload` (an object URL of a part photo the user saved from BrickLink) replaces the network
+// fetch and goes through the same crop/unwrap, so it also works when BrickLink blocks CORS.
+function usePartTexture(part: FigColors["torsoPart"], kind: TexKind, upload: string | null | undefined, report?: TexReport) {
   const [tex, setTex] = useState<THREE.Texture | null>(null);
-  const key = part ? `${part.id}|${part.colorName}` : "";
+  const reportRef = useRef(report);
+  useEffect(() => { reportRef.current = report; });
+  const key = `${part ? `${part.id}|${part.colorName}` : ""}|${upload ?? ""}`;
   useEffect(() => {
     let alive = true;
+    let made: THREE.Texture | null = null;
+    const say = (s: TexStatus, detail?: string) => { if (alive) reportRef.current?.(kind, s, detail); };
     setTex(null);
-    if (!part || !/pb|px|p\d/i.test(part.id)) return; // plain parts have no print
-    loadImage(partImageUrls(part.id, part.colorName)).then((img) => {
-      if (alive && img) setTex(kind === "torso" ? torsoTexture(img) : headTexture(img));
+    if (!upload) {
+      if (!part) { say("none"); return () => { alive = false; }; }
+      if (!/pb|px|p\d/i.test(part.id)) { say("noprint"); return () => { alive = false; }; } // plain parts have no print
+    }
+    say("loading");
+    const urls = upload ? [upload] : part ? partImageUrls(part.id, part.colorName) : [];
+    loadImage(urls).then(({ img, status, url }) => {
+      if (!alive) return;
+      if (!img) {
+        console.warn(`[brickmotion] ${kind} texture: ${status}`, url ?? urls);
+        say(status === "ok" ? "error" : status, url);
+        return;
+      }
+      try {
+        made = kind === "torso" ? torsoTexture(img) : headTexture(img);
+        setTex(made);
+        say("ok", url);
+      } catch (err) {
+        console.warn(`[brickmotion] ${kind} texture failed`, err);
+        say("error");
+      }
     });
-    return () => { alive = false; };
+    return () => { alive = false; made?.dispose(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, kind]);
   return tex;
@@ -171,22 +205,35 @@ function Leg({ side, angle, colors }: { side: 1 | -1; angle: number; colors: Fig
   );
 }
 
-function Minifig({ pose, colors }: { pose: Pose; colors: FigColors }) {
+type Uploads = Partial<Record<TexKind, string | null>>;
+
+function Minifig({ pose, colors, uploads, onTexture }: { pose: Pose; colors: FigColors; uploads?: Uploads; onTexture?: TexReport }) {
   const torsoGeo = useTorsoGeometry();
   const headGeo = useHeadGeometry();
+  // Front face of the torso (a trapezoid). torsoTexture() flattens the print row by row, so each
+  // row of this mesh must span u = 0..1 across *its own* width. A single 4-vertex quad can't do
+  // that (two triangles interpolate affinely and shear the print), so build it as thin row strips.
   const frontGeo = useMemo(() => {
-    const e = 0.004, hh = 0.64;
+    const e = 0.004, hh = 0.64, rows = 24;
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    for (let i = 0; i <= rows; i++) {
+      const f = i / rows; // 0 = waist, 1 = shoulders
+      const half = 0.78 + (0.57 - 0.78) * f;
+      const z = 0.39 + (0.359 - 0.39) * f + e;
+      const y = -hh + 2 * hh * f;
+      pos.push(-half, y, z, half, y, z);
+      uv.push(0, f, 1, f);
+      if (i < rows) { const a = i * 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
+    }
     const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute([
-      -0.78, -hh, 0.39 + e, 0.78, -hh, 0.39 + e, 0.57, hh, 0.359 + e, -0.57, hh, 0.359 + e,
-    ], 3));
-    g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-    g.setIndex([0, 1, 2, 0, 2, 3]);
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
     g.computeVertexNormals();
     return g;
   }, []);
-  const torsoTex = usePartTexture(colors.torsoPart, "torso");
-  const headTex = usePartTexture(colors.headPart, "head");
+  const torsoTex = usePartTexture(colors.torsoPart, "torso", uploads?.torso, onTexture);
+  const headTex = usePartTexture(colors.headPart, "head", uploads?.head, onTexture);
 
   return (
     <group position={[0, pose.bodyY, 0]} rotation={[d(pose.tilt), d(pose.bodyRot), 0]}>
@@ -269,8 +316,11 @@ function Minifig({ pose, colors }: { pose: Pose; colors: FigColors }) {
 }
 
 export default function MinifigScene({
-  pose, colors, onCanvas, ground,
-}: { pose: Pose; colors: FigColors; onCanvas: (c: HTMLCanvasElement) => void; ground: string }) {
+  pose, colors, onCanvas, ground, uploads, onTexture,
+}: {
+  pose: Pose; colors: FigColors; onCanvas: (c: HTMLCanvasElement) => void; ground: string;
+  uploads?: Uploads; onTexture?: TexReport;
+}) {
   return (
     <Canvas
       shadows
@@ -287,7 +337,7 @@ export default function MinifigScene({
         <Lightformer intensity={0.8} position={[-5, 2, 3]} rotation-y={Math.PI / 3} scale={[6, 2, 1]} />
         <Lightformer intensity={0.6} color="#ffe9c7" position={[5, 1, -2]} rotation-y={-Math.PI / 2} scale={[10, 2, 1]} />
       </Environment>
-      <Minifig pose={pose} colors={colors} />
+      <Minifig pose={pose} colors={colors} uploads={uploads} onTexture={onTexture} />
       <ContactShadows position={[0, 0, 0]} opacity={0.45} scale={10} blur={2.2} far={4} />
       <OrbitControls target={[0, 2, 0]} enablePan={false} minDistance={4} maxDistance={16} />
     </Canvas>

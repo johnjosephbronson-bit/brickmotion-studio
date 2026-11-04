@@ -117,6 +117,18 @@ const SLOT_RULES: [RegExp, Slot][] = [
 
 export type ParsedPart = { id: string; colorName: string; color: string; slot: Slot | null; raw: string };
 
+// Print textures: which part they belong to and how loading went (shown in the UI).
+export type TexKind = "torso" | "head";
+export type TexStatus = "none" | "noprint" | "loading" | "ok" | "cors" | "missing" | "error";
+
+// Any BrickLink numeric color id (from BL_NAME_ID) -> color name. Built lazily because
+// BL_NAME_ID is declared further down this file.
+let idToName: Record<string, string> | null = null;
+function colorNameFromId(s: string): string | undefined {
+  idToName ??= Object.fromEntries(Object.entries(BL_NAME_ID).map(([name, id]) => [String(id), name]));
+  return idToName[s];
+}
+
 export function parseParts(text: string): ParsedPart[] {
   return text
     .split("\n")
@@ -126,7 +138,7 @@ export function parseParts(text: string): ParsedPart[] {
       const clean = raw.replace(/^\d+\s*x\s+/i, "").replace(/\(.*?\)/g, "").trim();
       const [id = "", ...rest] = clean.split(/[\s,;]+/);
       let colorName = rest.join(" ").toLowerCase().trim();
-      colorName = BL_ID_COLORS[colorName] ?? colorName;
+      colorName = BL_ID_COLORS[colorName] ?? colorNameFromId(colorName) ?? colorName;
       const color = BL_COLORS[colorName] ?? "#f2cd37";
       const slot = SLOT_RULES.find(([re]) => re.test(id.toLowerCase()))?.[1] ?? null;
       return { id, colorName: colorName || "yellow", color, slot, raw };
