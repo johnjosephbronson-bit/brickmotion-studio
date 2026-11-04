@@ -124,7 +124,7 @@ export function parseParts(text: string): ParsedPart[] {
     .filter((l) => l && !l.startsWith("#"))
     .map((raw) => {
       const clean = raw.replace(/^\d+\s*x\s+/i, "").replace(/\(.*?\)/g, "").trim();
-      const [id, ...rest] = clean.split(/[\s,;]+/);
+      const [id = "", ...rest] = clean.split(/[\s,;]+/);
       let colorName = rest.join(" ").toLowerCase().trim();
       colorName = BL_ID_COLORS[colorName] ?? colorName;
       const color = BL_COLORS[colorName] ?? "#f2cd37";
