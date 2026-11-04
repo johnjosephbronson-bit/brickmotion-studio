@@ -28,7 +28,14 @@ function torsoTexture(img: HTMLImageElement) {
   c.width = 512; c.height = 512;
   const g = c.getContext("2d")!;
   const w = img.naturalWidth, h = img.naturalHeight;
-  g.drawImage(img, w * 0.255, h * 0.29, w * 0.49, h * 0.535, 0, 0, 512, 512);
+  // the printed front is a trapezoid in the photo: sample it row by row
+  const y0 = h * 0.285, y1 = h * 0.83;
+  for (let y = 0; y < 512; y++) {
+    const f = (y + 0.5) / 512;
+    const l = w * (0.345 + (0.235 - 0.345) * f);
+    const r = w * (0.66 + (0.765 - 0.66) * f);
+    g.drawImage(img, l, y0 + (y1 - y0) * f, r - l, (y1 - y0) / 512, 0, y, 512, 1);
+  }
   return finish(c);
 }
 
