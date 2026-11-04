@@ -65,13 +65,13 @@ export function evaluate(keys: Keyframe[], time: number, opt: AnimOptions): Pose
   if (!keys.length) return NEUTRAL;
   const sorted = [...keys].sort((a, b) => a.t - b.t);
   const t = opt.stepped ? Math.floor(time * opt.fps + 1e-6) / opt.fps : time;
-  if (t <= sorted[0].t) return sorted[0].pose;
-  const last = sorted[sorted.length - 1];
+  if (t <= sorted[0]!.t) return sorted[0]!.pose;
+  const last = sorted[sorted.length - 1]!;
   if (t >= last.t) return last.pose;
   let i = 0;
-  while (i < sorted.length - 1 && sorted[i + 1].t < t) i++;
-  const a = sorted[i];
-  const b = sorted[i + 1];
+  while (i < sorted.length - 1 && sorted[i + 1]!.t < t) i++;
+  const a = sorted[i]!;
+  const b = sorted[i + 1]!;
   const u = (t - a.t) / Math.max(1e-6, b.t - a.t);
   const e = opt.overshoot > 0 ? backInOut(u, opt.overshoot) : u * u * (3 - 2 * u);
   const out = {} as Pose;
