@@ -19,6 +19,8 @@
  */
 
 @theme inline {
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -63,24 +65,24 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
+  --background: oklch(0.965 0.012 85);
+  --foreground: oklch(0.2 0.02 60);
+  --card: oklch(0.99 0.005 85);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.86 0.16 92);
+  --primary-foreground: oklch(0.2 0.02 60);
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
+  --muted: oklch(0.93 0.012 85);
+  --muted-foreground: oklch(0.52 0.02 60);
+  --accent: oklch(0.58 0.21 28);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
+  --border: oklch(0.89 0.015 80);
+  --input: oklch(0.89 0.015 80);
   --ring: oklch(0.704 0.04 256.788);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -141,4 +143,23 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+@layer components {
+  body { font-family: var(--font-sans); }
+  .panel { @apply flex flex-col gap-6 overflow-y-auto border-border bg-card p-4; border-inline-width: 1px; }
+  .panel-title { @apply mb-2 flex items-baseline justify-between font-display text-sm font-semibold; }
+  .field { @apply w-full resize-none rounded-lg border border-input bg-background p-2 outline-none focus:ring-2 focus:ring-primary; }
+  .swatch { @apply inline-block h-3 w-3 rounded-sm border border-border; }
+  .pose-tile { @apply flex flex-col items-center gap-1 rounded-xl border border-border bg-background py-2 text-[11px] font-medium transition hover:-translate-y-0.5 hover:border-primary hover:bg-primary/20 active:translate-y-0; }
+  .btn-primary { @apply rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:brightness-95 disabled:opacity-50; }
+  .btn-ghost { @apply rounded-lg border border-border bg-background px-3 py-1.5 text-sm transition hover:bg-muted disabled:opacity-40; }
+  .slider { @apply mt-1 w-full; accent-color: var(--primary); }
+  .stud-logo { @apply h-7 w-7 rounded-md bg-primary; box-shadow: inset 0 0 0 7px var(--primary), inset 0 0 0 9px color-mix(in oklab, var(--foreground) 15%, transparent); }
+  .timeline { @apply relative h-14 rounded-lg bg-muted; }
+  .key { @apply absolute top-2 h-3 w-3 -translate-x-1/2 rotate-45 rounded-[2px] bg-foreground/70 z-20 transition hover:bg-accent; }
+  .key-active { @apply bg-accent; }
+  .key-label { @apply pointer-events-none absolute left-4 -top-1 -rotate-45 whitespace-nowrap text-[10px] text-muted-foreground; }
+  .playhead { @apply pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 -translate-x-1/2 bg-accent; }
+  .scrub { @apply absolute bottom-1 left-0 w-full; accent-color: var(--accent); }
 }
