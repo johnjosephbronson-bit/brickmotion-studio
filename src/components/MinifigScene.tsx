@@ -88,7 +88,7 @@ function Plastic({ color, map }: { color: string; map?: THREE.Texture | null }) 
 function useTorsoGeometry() {
   return useMemo(() => {
     const g = new THREE.BoxGeometry(1, 1.28, 0.78, 1, 1, 1);
-    const pos = g.attributes.position as THREE.BufferAttribute;
+    const pos = g.attributes["position"] as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);
       const top = y > 0;
