@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
-import { partImageUrls, type FigColors, type Pose, type TexKind, type TexStatus } from "@/lib/minifig";
+import { partImageUrls, partProxyUrl, type FigColors, type Pose, type TexKind, type TexStatus } from "@/lib/minifig";
 
 const d = (deg: number) => (deg * Math.PI) / 180;
 
@@ -89,7 +89,8 @@ function usePartTexture(part: FigColors["torsoPart"], kind: TexKind, upload: str
       if (!/pb|px|p\d/i.test(part.id)) { say("noprint"); return () => { alive = false; }; } // plain parts have no print
     }
     say("loading");
-    const urls = upload ? [upload] : part ? partImageUrls(part.id, part.colorName) : [];
+    // our own /api/part-image proxy first (same origin, so no CORS), BrickLink direct as a fallback
+    const urls = upload ? [upload] : part ? [partProxyUrl(part.id, part.colorName), ...partImageUrls(part.id, part.colorName)] : [];
     loadImage(urls).then(({ img, status, url }) => {
       if (!alive) return;
       if (!img) {

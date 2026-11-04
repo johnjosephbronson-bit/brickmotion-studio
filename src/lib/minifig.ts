@@ -164,10 +164,16 @@ export const BL_NAME_ID: Record<string, number> = {
   "medium nougat": 150, "dark azure": 153, "medium azure": 156, "medium lavender": 157,
 };
 
-// Candidate picture URLs for a BrickLink part (BrickLink sends CORS headers for these).
-export function partImageUrls(id: string, colorName: string): string[] {
-  const base = "https://img.bricklink.com/ItemImage";
+// Same-origin URL served by src/routes/api/part-image.ts, which fetches the picture from
+// BrickLink on the server (browsers can't use BrickLink images directly: no CORS).
+export function partProxyUrl(id: string, colorName: string): string {
   const cid = BL_NAME_ID[colorName];
+  return `/api/part-image?id=${encodeURIComponent(id)}${cid ? `&color=${cid}` : ""}`;
+}
+
+// Candidate BrickLink picture URLs for a part id (+ optional BrickLink color id).
+export function partImageUrlsById(id: string, cid?: number): string[] {
+  const base = "https://img.bricklink.com/ItemImage";
   // heads were renumbered: 3626bpb0912 / 3626cpb0912 / 28621pb.. -> 3626pb0912
   const alt = id.replace(/^3626[bc]p(b|x)/i, "3626p$1");
   const ids = Array.from(new Set([id, alt]));
@@ -177,6 +183,10 @@ export function partImageUrls(id: string, colorName: string): string[] {
     out.push(`${base}/PL/${x}.png`);
   }
   return out;
+}
+
+export function partImageUrls(id: string, colorName: string): string[] {
+  return partImageUrlsById(id, BL_NAME_ID[colorName]);
 }
 
 export function figureFromParts(parts: ParsedPart[]): FigColors {
