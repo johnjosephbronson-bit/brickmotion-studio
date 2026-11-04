@@ -127,8 +127,8 @@ function useTorsoGeometry() {
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);
       const top = y > 0;
-      pos.setX(i, pos.getX(i) * (top ? 1.14 : 1.56));
-      pos.setZ(i, pos.getZ(i) * (top ? 0.92 : 1));
+      pos.setX(i, pos.getX(i) * (top ? 1.44 : 1.56));
+      pos.setZ(i, pos.getZ(i) * (top ? 0.97 : 1));
     }
     g.computeVertexNormals();
     return g;
@@ -138,7 +138,7 @@ function useTorsoGeometry() {
 // Head: rounded cylinder made with a lathe profile.
 function useHeadGeometry() {
   return useMemo(() => {
-    const r = 0.47, h = 0.72, b = 0.09;
+    const r = 0.43, h = 0.7, b = 0.09;
     const pts: THREE.Vector2[] = [new THREE.Vector2(0, -h / 2)];
     for (let i = 0; i <= 6; i++) {
       const a = -Math.PI / 2 + (i / 6) * (Math.PI / 2);
@@ -154,27 +154,24 @@ function useHeadGeometry() {
 }
 
 function Arm({ side, angle, twist, colors }: { side: 1 | -1; angle: number; twist: number; colors: FigColors }) {
+  // Pivot sits at the torso's top corner (torso top = y 2.81); the arm hangs straight down.
   return (
-    <group position={[0.6 * side, 2.5, 0]} rotation={[0, 0, d(6) * side]}>
+    <group position={[0.9 * side, 2.6, 0]}>
       <group rotation={[d(angle), 0, 0]}>
-        {/* shoulder */}
-        <mesh position={[0.1 * side, -0.06, 0]} castShadow>
-          <sphereGeometry args={[0.22, 24, 16]} />
+        {/* rounded shoulder */}
+        <mesh castShadow>
+          <sphereGeometry args={[0.19, 24, 16]} />
           <Plastic color={colors.arms} />
         </mesh>
-        {/* upper arm, angled out */}
-        <mesh position={[0.17 * side, -0.32, 0.02]} rotation={[d(-6), 0, d(10) * side]} castShadow>
-          <cylinderGeometry args={[0.2, 0.17, 0.55, 24]} />
+        {/* straight arm */}
+        <mesh position={[0, -0.41, 0]} castShadow>
+          <cylinderGeometry args={[0.19, 0.16, 0.82, 24]} />
           <Plastic color={colors.arms} />
         </mesh>
-        {/* forearm bending forward */}
-        <mesh position={[0.21 * side, -0.66, 0.16]} rotation={[d(-40), 0, d(4) * side]} castShadow>
-          <cylinderGeometry args={[0.17, 0.15, 0.42, 24]} />
-          <Plastic color={colors.arms} />
-        </mesh>
-        <group position={[0.22 * side, -0.84, 0.36]} rotation={[d(-50), d(twist), 0]}>
-          <mesh position={[0, 0.05, 0]} castShadow>
-            <cylinderGeometry args={[0.075, 0.075, 0.16, 16]} />
+        {/* hand: wrist peg + C-clip */}
+        <group position={[0, -0.86, 0]} rotation={[0, d(twist), 0]}>
+          <mesh position={[0, 0.02, 0]} castShadow>
+            <cylinderGeometry args={[0.09, 0.09, 0.14, 16]} />
             <Plastic color={colors.hands} />
           </mesh>
           <mesh position={[0, -0.12, 0]} rotation={[0, d(90), d(135)]} castShadow>
@@ -199,7 +196,7 @@ function Leg({ side, angle, colors }: { side: 1 | -1; angle: number; colors: Fig
         <Plastic color={colors.legs} />
       </RoundedBox>
       {/* foot */}
-      <RoundedBox args={[0.74, 0.22, 0.98]} radius={0.04} position={[0, -1.07, 0.1]} castShadow>
+      <RoundedBox args={[0.74, 0.22, 0.9]} radius={0.04} position={[0, -1.07, 0.06]} castShadow>
         <Plastic color={colors.legs} />
       </RoundedBox>
     </group>
@@ -219,8 +216,8 @@ function Minifig({ pose, colors, uploads, onTexture }: { pose: Pose; colors: Fig
     const pos: number[] = [], uv: number[] = [], idx: number[] = [];
     for (let i = 0; i <= rows; i++) {
       const f = i / rows; // 0 = waist, 1 = shoulders
-      const half = 0.78 + (0.57 - 0.78) * f;
-      const z = 0.39 + (0.359 - 0.39) * f + e;
+      const half = 0.78 + (0.72 - 0.78) * f;
+      const z = 0.39 + (0.378 - 0.39) * f + e;
       const y = -hh + 2 * hh * f;
       pos.push(-half, y, z, half, y, z);
       uv.push(0, f, 1, f);
@@ -261,52 +258,52 @@ function Minifig({ pose, colors, uploads, onTexture }: { pose: Pose; colors: Fig
           <cylinderGeometry args={[0.24, 0.24, 0.1, 24]} />
           <Plastic color={colors.head} />
         </mesh>
-        <mesh geometry={headGeo} position={[0, 0.44, 0]} castShadow>
+        <mesh geometry={headGeo} position={[0, 0.43, 0]} castShadow>
           <Plastic color={colors.head} />
         </mesh>
         {/* printed face strip (front half of the head) */}
         {headTex ? (
-          <mesh position={[0, 0.44, 0]}>
-            <cylinderGeometry args={[0.473, 0.473, 0.54, 48, 1, true, -Math.PI / 2, Math.PI]} />
+          <mesh position={[0, 0.43, 0]}>
+            <cylinderGeometry args={[0.433, 0.433, 0.5, 48, 1, true, -Math.PI / 2, Math.PI]} />
             <meshPhysicalMaterial map={headTex} roughness={0.22} clearcoat={0.6} clearcoatRoughness={0.25} />
           </mesh>
         ) : (
           <>
             {[-0.15, 0.15].map((x) => (
-              <mesh key={x} position={[x, 0.5, 0.455]} scale={[1, 1.35, 0.35]}>
+              <mesh key={x} position={[x, 0.49, 0.415]} scale={[1, 1.35, 0.35]}>
                 <sphereGeometry args={[0.05, 12, 12]} />
                 <meshStandardMaterial color="#1b1b1b" />
               </mesh>
             ))}
-            <mesh position={[0, 0.37, 0.45]} rotation={[0, 0, Math.PI]}>
+            <mesh position={[0, 0.36, 0.41]} rotation={[0, 0, Math.PI]}>
               <torusGeometry args={[0.15, 0.02, 8, 24, Math.PI]} />
               <meshStandardMaterial color="#1b1b1b" />
             </mesh>
           </>
         )}
         {/* hollow top stud */}
-        <mesh position={[0, 0.88, 0]}>
-          <cylinderGeometry args={[0.25, 0.25, 0.16, 32, 1, true]} />
+        <mesh position={[0, 0.86, 0]}>
+          <cylinderGeometry args={[0.23, 0.23, 0.16, 32, 1, true]} />
           <meshPhysicalMaterial color={colors.head} side={THREE.DoubleSide} roughness={0.22} clearcoat={0.6} />
         </mesh>
-        <mesh position={[0, 0.83, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0, 0.25, 32]} />
+        <mesh position={[0, 0.81, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0, 0.23, 32]} />
           <Plastic color={colors.head} />
         </mesh>
         {colors.hair && (
-          <mesh position={[0, 0.68, -0.04]} scale={[1.08, 0.85, 1.08]} castShadow>
+          <mesh position={[0, 0.66, -0.04]} scale={[1.08, 0.85, 1.08]} castShadow>
             <sphereGeometry args={[0.5, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.6]} />
             <Plastic color={colors.hair} />
           </mesh>
         )}
         {colors.hat && (
-          <group position={[0, 0.86, 0]}>
+          <group position={[0, 0.84, 0]}>
             <mesh castShadow>
-              <cylinderGeometry args={[0.48, 0.5, 0.34, 32]} />
+              <cylinderGeometry args={[0.44, 0.46, 0.34, 32]} />
               <Plastic color={colors.hat} />
             </mesh>
             <mesh position={[0, -0.13, 0.2]}>
-              <cylinderGeometry args={[0.64, 0.64, 0.06, 32]} />
+              <cylinderGeometry args={[0.6, 0.6, 0.06, 32]} />
               <Plastic color={colors.hat} />
             </mesh>
           </group>
