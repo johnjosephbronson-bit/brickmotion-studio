@@ -167,6 +167,17 @@ function Leg({ side, angle, colors }: { side: 1 | -1; angle: number; colors: Fig
 function Minifig({ pose, colors }: { pose: Pose; colors: FigColors }) {
   const torsoGeo = useTorsoGeometry();
   const headGeo = useHeadGeometry();
+  const frontGeo = useMemo(() => {
+    const e = 0.004, hh = 0.64;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute([
+      -0.78, -hh, 0.39 + e, 0.78, -hh, 0.39 + e, 0.57, hh, 0.359 + e, -0.57, hh, 0.359 + e,
+    ], 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    g.computeVertexNormals();
+    return g;
+  }, []);
   const torsoTex = usePartTexture(colors.torsoPart, "torso");
   const headTex = usePartTexture(colors.headPart, "head");
 
@@ -180,13 +191,13 @@ function Minifig({ pose, colors }: { pose: Pose; colors: FigColors }) {
       </RoundedBox>
       {/* torso: front face gets the BrickLink print */}
       <mesh geometry={torsoGeo} position={[0, 2.17, 0]} castShadow>
-        <Plastic attach="material-0" color={colors.torso} />
-        <Plastic attach="material-1" color={colors.torso} />
-        <Plastic attach="material-2" color={colors.torso} />
-        <Plastic attach="material-3" color={colors.torso} />
-        <Plastic key={torsoTex ? torsoTex.uuid : "plain"} attach="material-4" color={colors.torso} map={torsoTex} />
-        <Plastic attach="material-5" color={colors.torso} />
+        <Plastic color={colors.torso} />
       </mesh>
+      {torsoTex && (
+        <mesh geometry={frontGeo} position={[0, 2.17, 0]}>
+          <meshPhysicalMaterial map={torsoTex} roughness={0.22} clearcoat={0.6} clearcoatRoughness={0.25} />
+        </mesh>
+      )}
       <Arm side={1} angle={pose.armL} twist={pose.handL} colors={colors} />
       <Arm side={-1} angle={pose.armR} twist={-pose.handR} colors={colors} />
       <group position={[0, 2.81, 0]} rotation={[0, d(pose.headY), 0]}>
