@@ -87,7 +87,7 @@ export function evaluate(keys: Keyframe[], time: number, opt: AnimOptions): Pose
 
 export type Slot = "head" | "torso" | "arms" | "hands" | "hips" | "legs" | "hair" | "hat" | "face";
 
-export const BL_COLORS: Record<string, string> = {
+const BL = {
   white: "#f4f4f4", "very light gray": "#e6e3da", "light bluish gray": "#a0a5a9", "dark bluish gray": "#6c6e68",
   black: "#1b2a34", red: "#c91a09", "dark red": "#720e0f", orange: "#fe8a18", yellow: "#f2cd37",
   "bright light yellow": "#fff03a", tan: "#e4cd9e", "dark tan": "#958a73", "reddish brown": "#582a12",
@@ -99,7 +99,8 @@ export const BL_COLORS: Record<string, string> = {
   "dark orange": "#a95500", "pearl gold": "#aa7f2e", "flat silver": "#898788", "trans-clear": "#fcfcfc",
 };
 
-export const BL_ID_COLORS: Record<string, string> = {
+export const BL_COLORS: Record<string, string | undefined> = BL;
+export const BL_ID_COLORS: Record<string, string | undefined> = {
   "1": "white", "11": "black", "5": "red", "3": "yellow", "7": "blue", "6": "green", "86": "light bluish gray",
   "85": "dark bluish gray", "2": "tan", "88": "reddish brown", "63": "dark blue", "4": "orange", "59": "dark red",
 };
@@ -125,7 +126,7 @@ export function parseParts(text: string): ParsedPart[] {
       const clean = raw.replace(/^\d+\s*x\s+/i, "").replace(/\(.*?\)/g, "").trim();
       const [id, ...rest] = clean.split(/[\s,;]+/);
       let colorName = rest.join(" ").toLowerCase().trim();
-      if (BL_ID_COLORS[colorName]) colorName = BL_ID_COLORS[colorName];
+      colorName = BL_ID_COLORS[colorName] ?? colorName;
       const color = BL_COLORS[colorName] ?? "#f2cd37";
       const slot = SLOT_RULES.find(([re]) => re.test(id.toLowerCase()))?.[1] ?? null;
       return { id, colorName: colorName || "yellow", color, slot, raw };
@@ -139,8 +140,8 @@ export type FigColors = {
 
 export function figureFromParts(parts: ParsedPart[]): FigColors {
   const f: FigColors = {
-    head: BL_COLORS.yellow, torso: BL_COLORS.red, arms: BL_COLORS.red, hands: BL_COLORS.yellow,
-    hips: BL_COLORS.blue, legs: BL_COLORS.blue, hair: null, hat: null,
+    head: BL.yellow, torso: BL.red, arms: BL.red, hands: BL.yellow,
+    hips: BL.blue, legs: BL.blue, hair: null, hat: null,
   };
   let armsSet = false;
   for (const pt of parts) {
