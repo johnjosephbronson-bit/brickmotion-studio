@@ -117,7 +117,7 @@ export default function MinifigScene({
   return (
     <Canvas
       shadows
-      camera={{ position: [4.5, 3.4, 6.5], fov: 35 }}
+      camera={{ position: [6.5, 4.5, 9.5], fov: 32 }}
       gl={{ preserveDrawingBuffer: true, antialias: true }}
       onCreated={({ gl }) => onCanvas(gl.domElement)}
     >
