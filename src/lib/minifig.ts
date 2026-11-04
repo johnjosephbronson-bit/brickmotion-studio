@@ -136,7 +136,36 @@ export function parseParts(text: string): ParsedPart[] {
 export type FigColors = {
   head: string; torso: string; arms: string; hands: string; hips: string; legs: string;
   hair: string | null; hat: string | null;
+  headPart?: { id: string; colorName: string } | null;
+  torsoPart?: { id: string; colorName: string } | null;
+  legsPart?: { id: string; colorName: string } | null;
 };
+
+// BrickLink color name -> BrickLink color id (used for part picture lookups)
+export const BL_NAME_ID: Record<string, number> = {
+  white: 1, tan: 2, yellow: 3, orange: 4, red: 5, green: 6, blue: 7, brown: 8, black: 11,
+  "trans-clear": 12, nougat: 28, lime: 34, "bright green": 36, "medium blue": 42, "sand green": 48,
+  "very light gray": 49, "sand blue": 55, "dark red": 59, "dark blue": 63, "dark orange": 68,
+  "dark tan": 69, magenta: 71, "light bluish gray": 86, "dark bluish gray": 85, "reddish brown": 88,
+  "dark purple": 89, "light nougat": 90, "flat silver": 95, "bright light yellow": 103,
+  "bright pink": 104, "dark pink": 47, "pearl gold": 115, "dark brown": 120, "dark green": 80,
+  "medium nougat": 150, "dark azure": 153, "medium azure": 156, "medium lavender": 157,
+};
+
+// Candidate picture URLs for a BrickLink part (BrickLink sends CORS headers for these).
+export function partImageUrls(id: string, colorName: string): string[] {
+  const base = "https://img.bricklink.com/ItemImage";
+  const cid = BL_NAME_ID[colorName];
+  // heads were renumbered: 3626bpb0912 / 3626cpb0912 / 28621pb.. -> 3626pb0912
+  const alt = id.replace(/^3626[bc]p(b|x)/i, "3626p$1");
+  const ids = Array.from(new Set([id, alt]));
+  const out: string[] = [];
+  for (const x of ids) {
+    if (cid) out.push(`${base}/PN/${cid}/${x}.png`);
+    out.push(`${base}/PL/${x}.png`);
+  }
+  return out;
+}
 
 export function figureFromParts(parts: ParsedPart[]): FigColors {
   const f: FigColors = {
@@ -146,11 +175,11 @@ export function figureFromParts(parts: ParsedPart[]): FigColors {
   let armsSet = false;
   for (const pt of parts) {
     switch (pt.slot) {
-      case "head": f.head = pt.color; if (!parts.some((x) => x.slot === "hands")) f.hands = pt.color; break;
-      case "torso": f.torso = pt.color; if (!armsSet) f.arms = pt.color; break;
+      case "head": f.head = pt.color; f.headPart = { id: pt.id, colorName: pt.colorName }; if (!parts.some((x) => x.slot === "hands")) f.hands = pt.color; break;
+      case "torso": f.torso = pt.color; f.torsoPart = { id: pt.id, colorName: pt.colorName }; if (!armsSet) f.arms = pt.color; break;
       case "arms": f.arms = pt.color; armsSet = true; break;
       case "hands": f.hands = pt.color; break;
-      case "legs": f.legs = pt.color; f.hips = pt.color; break;
+      case "legs": f.legs = pt.color; f.legsPart = { id: pt.id, colorName: pt.colorName }; f.hips = pt.color; break;
       case "hair": f.hair = pt.color; break;
       case "hat": f.hat = pt.color; break;
     }
@@ -159,7 +188,7 @@ export function figureFromParts(parts: ParsedPart[]): FigColors {
 }
 
 export const SAMPLE_PARTS = `# BrickLink part number + color (one per line)
-3626cpb1 Yellow
-973pb0101c01 Red
-970c00 Blue
+3626pb0912 Yellow
+973pb0101c01 White
+970c00 Black
 3901 Reddish Brown`;
