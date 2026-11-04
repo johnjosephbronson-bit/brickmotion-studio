@@ -184,7 +184,7 @@ function Minifig({ pose, colors }: { pose: Pose; colors: FigColors }) {
         <Plastic attach="material-1" color={colors.torso} />
         <Plastic attach="material-2" color={colors.torso} />
         <Plastic attach="material-3" color={colors.torso} />
-        <Plastic attach="material-4" color={colors.torso} map={torsoTex} />
+        <Plastic key={torsoTex ? torsoTex.uuid : "plain"} attach="material-4" color={colors.torso} map={torsoTex} />
         <Plastic attach="material-5" color={colors.torso} />
       </mesh>
       <Arm side={1} angle={pose.armL} twist={pose.handL} colors={colors} />
@@ -228,7 +228,7 @@ function Minifig({ pose, colors }: { pose: Pose; colors: FigColors }) {
           <Plastic color={colors.head} />
         </mesh>
         {colors.hair && (
-          <mesh position={[0, 0.6, -0.03]} scale={[1.08, 0.9, 1.08]} castShadow>
+          <mesh position={[0, 0.68, -0.04]} scale={[1.08, 0.85, 1.08]} castShadow>
             <sphereGeometry args={[0.5, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.6]} />
             <Plastic color={colors.hair} />
           </mesh>
